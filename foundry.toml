@@ -6,7 +6,7 @@ libs = ['lib']
 remappings = [
   "forge-std=lib/forge-std/src/",
   "@openzeppelin=lib/openzeppelin-contracts/",
-  "@erc721a=lib/ERC721A/",
+  "@solmate=lib/solmate/src/",
 ]
 
 [profile.ci]

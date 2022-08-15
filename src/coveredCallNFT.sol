@@ -1,40 +1,39 @@
-// SPDX-License-Identifier: Unlicense
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import "@erc721a/contracts/ERC721A.sol";
+import "@solmate/tokens/ERC721.sol";
 
-contract coveredCallNFT is ERC721A("CallNFT", "CLN") {
+/// modified from: https://github.com/outdoteth/cally/blob/main/src/CallyNft.sol
 
-    uint256 public constant MAX_TOKENS = type(uint256).max;
+abstract contract coveredCallNFT is ERC721("CCall", "CAL") {
+    function _mint(address to, uint256 id) internal override {
+        require(to != address(0), "invalid recipient");
+        require(_ownerOf[id] == address(0), "already minted");
 
-    constructor() {}
+        _ownerOf[id] = to;
 
-    function _startTokenId() internal view virtual override returns (uint256) {
-        return 1;
+        emit Transfer(address(0), to, id);
     }
 
-    function mint(uint _numTokens) public {
-        require(totalSupply() + _numTokens <= MAX_TOKENS, "MAX_TOKENS_EXCEEDED");
-        unchecked {
-            for (uint i = 0; i < _numTokens; i++) {
-                _safeMint(msg.sender, totalSupply() + 1);
-            }
-        }
+    // burns a token without checking owner address is not 0
+    // and removes balanceOf modifications
+    function _burn(uint256 id) internal override {
+        address owner = _ownerOf[id];
+
+        delete _ownerOf[id];
+        delete getApproved[id];
+
+        emit Transfer(owner, address(0), id);
     }
 
-    // function tokensOfOwner(address _owner) external view returns(uint256[] memory) {
-    //     uint256 tokenCount = balanceOf(_owner);
-    //     if (tokenCount == 0) {
-    //         return new uint256[](0);
-    //     } else {
-    //         uint256[] memory tokensIndices = new uint256[](tokenCount);
-    //         unchecked {
-    //             for (uint256 i = 0; i < tokenCount; i++) {
-    //                 tokensIndices[i] = tokenOfOwnerByIndex(_owner, i);
-    //             }
-    //         }
-    //         return tokensIndices;
-    //     }
-    // }
-    
+    // forceTransfer option position NFT out of owner's wallet and give to new buyer
+    function _forceTransfer(address to, uint256 id) internal {
+        require(to != address(0), "invalid recipient");
+
+        address from = _ownerOf[id];
+        _ownerOf[id] = to;
+        delete getApproved[id];
+
+        emit Transfer(from, to, id);
+    }
 }
