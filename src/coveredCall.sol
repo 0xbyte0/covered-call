@@ -146,7 +146,10 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
         require((_vault >> 2) & 1 == 0, "vault exercised");
 
         address _owner = ownerOf(vaultId);
-        s_ethBalance[_owner] += msg.value;
+        
+        unchecked {
+            s_ethBalance[_owner] += msg.value;
+        }
 
         // force transfer to `msg.sender`
         _forceTransfer(msg.sender, vaultId);
@@ -171,9 +174,11 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
 
         // ex: 3% fees means s_defaultFeeRate == 30
         uint256 fee = (msg.value * s_defaultFeeRate) / 1000;
-        protocolUnclaimedFees += fee;
 
-        s_ethBalance[ownerOf(vaultId)] += msg.value - fee;
+        unchecked {
+            protocolUnclaimedFees += fee;
+            s_ethBalance[ownerOf(vaultId)] += msg.value - fee;    
+        }
 
         ERC721(v_tokenAddress).safeTransferFrom(address(this), msg.sender, v_tokenId);
     }
