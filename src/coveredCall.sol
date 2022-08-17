@@ -139,7 +139,7 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
 
         v_strikePrice = v_strikePrice * 1 ether; /// insinuate that the prices are in whole numbers
 
-        // require(msg.value >= getStrike(v_startsAt, v_strikePrice), "insufficient eth sent");
+        require(msg.value >= getStrike(v_startsAt, v_strikePrice), "insufficient eth sent");
 
         require((_vault >> 3) & 1 == 0, "already withdrawing");
 
@@ -162,7 +162,9 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
 
         require(block.timestamp < v_endsAt, "expired");
 
-        // require(msg.value >= getStrike(v_startsAt, v_strikePrice), "insufficient eth sent");
+        v_strikePrice = v_strikePrice * 1 ether;
+
+        require(msg.value >= getStrike(v_startsAt, v_strikePrice), "insufficient eth sent");
 
         // set vault as exercised
         s_vault[vaultId] = _vault | (1 << 2);

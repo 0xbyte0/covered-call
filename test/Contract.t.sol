@@ -60,7 +60,7 @@ contract TestContract is Test, ERC721Holder {
     function testExercise() public {
         uint256 vaultId = createNewVault(3);
 
-        myCoveredCall.exerciseOption(vaultId);
+        myCoveredCall.exerciseOption{value: 3 ether}(vaultId);
 
         vm.expectRevert(bytes("vault exercised"));
         myCoveredCall.exerciseOption(vaultId);
@@ -69,6 +69,6 @@ contract TestContract is Test, ERC721Holder {
     function testPurchaseOption() public {
         uint256 vaultId = createNewVault(4);
 
-        myCoveredCall.purchaseOption(vaultId);
+        myCoveredCall.purchaseOption{value: 3 ether}(vaultId);
     }
 }
