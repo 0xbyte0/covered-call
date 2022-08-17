@@ -1,39 +1,13 @@
-# <h1 align="center"> Forge Template </h1>
+## Introduction
 
-**Template repository for getting started quickly with Foundry projects**
+This is a covered call smart contract, can be seen as a minimal implementaion of [cally.finance](https://docs.cally.finance/overview/introduction). The seller deposits an NFT into a vault and earns a fee selling the vault. This contract gives the purchaser the right to buy tokens if the contract conditions are met. The contract is considered “covered” because the tokens are deposited into the contract. If the contract conditions are not met then the seller can withdraw his tokens at expiration.
 
-![Github Actions](https://github.com/foundry-rs/forge-template/workflows/CI/badge.svg)
+## The example use case
 
-## Getting Started
+Alice creates an options vault with an NFT. Essentially this is a covered call options contract. Bob buys the option and can exercise the contract if it makes economic sense. If the contract is not exercised Alice can reclaim her tokens and keep the premium payed by Bob.
 
-Click "Use this template" on [GitHub](https://github.com/foundry-rs/forge-template) to create a new repository with this repo as the initial state.
+## Disclaimer
 
-Or, if your repo already exists, run:
-```sh
-forge init
-forge build
-forge test
-```
+This code is heavily under construction and has not been tested.
 
-## Writing your first test
-
-All you need is to `import forge-std/Test.sol` and then inherit it from your test contract. Forge-std's Test contract comes with a pre-instatiated [cheatcodes environment](https://book.getfoundry.sh/cheatcodes/), the `vm`. It also has support for [ds-test](https://book.getfoundry.sh/reference/ds-test.html)-style logs and assertions. Finally, it supports Hardhat's [console.log](https://github.com/brockelmore/forge-std/blob/master/src/console.sol). The logging functionalities require `-vvvv`.
-
-```solidity
-pragma solidity 0.8.10;
-
-import "forge-std/Test.sol";
-
-contract ContractTest is Test {
-    function testExample() public {
-        vm.roll(100);
-        console.log(1);
-        emit log("hi");
-        assertTrue(true);
-    }
-}
-```
-
-## Development
-
-This project uses [Foundry](https://getfoundry.sh). See the [book](https://book.getfoundry.sh/getting-started/installation.html) for instructions on how to install and use Foundry.
+Please do not use for production.
