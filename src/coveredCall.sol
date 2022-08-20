@@ -16,7 +16,13 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
     ///////////////////////////////////////////////////////////////////////////////
     //                                  EVENTS                                   //
     ///////////////////////////////////////////////////////////////////////////////
-    
+    event NewVault(uint256 indexed vaultId, address indexed from, address indexed token, uint256 tokenId);
+    event InitiatedWithdrawal(uint256 indexed vaultId, address indexed from);
+    event Withdrawal(uint256 indexed vaultId, address indexed from);
+    event Harvested(address indexed from, uint256 amount);
+    event ExercisedOption(uint256 indexed vaultId, address indexed from);
+    event PurchasedOption(uint256 indexed vaultId, address indexed from, address indexed token);
+
 
     ///////////////////////////////////////////////////////////////////////////////
     //                                  BIT WIDTHS                               //
@@ -111,6 +117,8 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
 
         s_vault[vaultId] = v;
 
+        emit NewVault(vaultId, msg.sender, tokenAddr, tokenId);
+
         ERC721(tokenAddr).safeTransferFrom(msg.sender, address(this), tokenId);
         return vaultId;
     }
@@ -124,36 +132,38 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
         return startingPrice - (timeElapsed * s_defaultPriceDecrement);
     }
 
-    /// @notice Purchase an option on the vault  at a price dependent on the dutch auction.
-    ///         the premium is sent to the vault beneficiary
-    /// @param vaultId the id of the vault
-    function purchaseOption(uint256 vaultId) external payable returns (uint256 optionId) {
-        require(vaultId <= s_totalVaults.current(), "vault does not exists");
+    // /// @notice Purchase an option on the vault  at a price dependent on the dutch auction.
+    // ///         the premium is sent to the vault beneficiary
+    // /// @param vaultId the id of the vault
+    // function purchaseOption(uint256 vaultId) external payable {
+    //     require(vaultId <= s_totalVaults.current(), "vault does not exists");
 
-        uint256 _vault = s_vault[vaultId]; 
+    //     uint256 _vault = s_vault[vaultId]; 
 
-        (uint v_tokenId, address v_tokenAddress, uint v_endsAt, uint v_startsAt, uint v_strikePrice, uint v_misc) = getVaultData(_vault);
+    //     (uint v_tokenId, address v_tokenAddress, 
+    //     uint v_endsAt, uint v_startsAt, 
+    //     uint v_strikePrice, uint v_misc) = getVaultData(_vault);
 
-        require(block.timestamp >= v_startsAt, "not started");
-        require(block.timestamp < v_endsAt, "expired");
+    //     require(block.timestamp >= v_startsAt, "not started");
+    //     require(block.timestamp < v_endsAt, "expired");
 
-        v_strikePrice = v_strikePrice * 1 ether; /// insinuate that the prices are in whole numbers
+    //     v_strikePrice = v_strikePrice * 1 ether; /// insinuate that the prices are in whole numbers
 
-        require(msg.value >= getStrike(v_startsAt, v_strikePrice), "insufficient eth sent");
+    //     require(msg.value >= getStrike(v_startsAt, v_strikePrice), "insufficient eth sent");
+    //     require((_vault >> 3) & 1 == 0, "already withdrawing");
+    //     require((_vault >> 2) & 1 == 0, "vault exercised");
 
-        require((_vault >> 3) & 1 == 0, "already withdrawing");
+    //     address _owner = ownerOf(vaultId);
 
-        require((_vault >> 2) & 1 == 0, "vault exercised");
+    //     // force transfer to `msg.sender`
+    //     _forceTransfer(msg.sender, vaultId);
 
-        address _owner = ownerOf(vaultId);
-        
-        unchecked {
-            s_ethBalance[_owner] += msg.value;
-        }
+    //     unchecked {
+    //         s_ethBalance[_owner] += msg.value;
+    //     }
 
-        // force transfer to `msg.sender`
-        _forceTransfer(msg.sender, vaultId);
-    }
+    //     emit PurchasedOption(vaultId, msg.sender, v_tokenAddress);
+    // }
 
     function exerciseOption(uint256 vaultId) external payable {
         require(msg.sender == ownerOf(vaultId), "You are not the owner");
@@ -161,7 +171,9 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
         
         require((_vault >> 2) & 1 == 0, "vault exercised");
 
-        (uint v_tokenId, address v_tokenAddress, uint v_endsAt, uint v_startsAt, uint v_strikePrice, uint v_misc) = getVaultData(_vault);
+        (uint v_tokenId, address v_tokenAddress, 
+        uint v_endsAt, uint v_startsAt, 
+        uint v_strikePrice, uint v_misc) = getVaultData(_vault);
 
         require(block.timestamp < v_endsAt, "expired");
 
@@ -181,6 +193,8 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
         }
 
         ERC721(v_tokenAddress).safeTransferFrom(address(this), msg.sender, v_tokenId);
+
+        emit ExercisedOption(vaultId, msg.sender);
     }
 
     /// @notice Initiates a withdrawal, this way the vault will no longer sell
@@ -196,8 +210,47 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
 
         // set vault as withdrawing
         s_vault[vaultId] = _vault | (1 << 3);
+
+        emit InitiatedWithdrawal(vaultId, msg.sender);
     }
 
+    /// @notice Sends the underlying assets back to the vault owner and claims any
+    ///         unharvested premiums for the owner. The vault NFT and it's associated
+    ///         option NFT are burned.
+    /// @param vaultId is the vault id to withdraw
+    function withdraw(uint256 vaultId) external {
+        require(msg.sender == ownerOf(vaultId), "not owner");
+
+        uint256 _vault = s_vault[vaultId];
+
+        (uint v_tokenId, address v_tokenAddress, 
+        uint v_endsAt, uint v_startsAt, 
+        uint v_strikePrice, uint v_misc) = getVaultData(_vault);
+
+        require((_vault >> 3) & 1 == 1, "vault not in withdrawing state");
+        require((_vault >> 2) & 1 == 0, "vault exercised");
+        require(block.timestamp > v_endsAt, "vault still active");
+
+        _burn(vaultId);
+
+        emit Withdrawal(vaultId, msg.sender);
+
+        harvest();
+
+        ERC721(v_tokenAddress).safeTransferFrom(address(this), msg.sender, v_tokenId);
+    }
+
+    /// @notice Sends any unclaimed ETH to the msg.sender
+    /// @return amount The amount of ETH that was harvested
+    function harvest() public returns (uint256 amount) {
+        amount = s_ethBalance[msg.sender];
+        s_ethBalance[msg.sender] = 0;
+
+        emit Harvested(msg.sender, amount);
+
+        // transfer eth to msg.sender
+        payable(msg.sender).send(amount);
+    }
 
     /// @notice Gets a the vault value with `vaultId`
     /// @param vaultId the id of the vault

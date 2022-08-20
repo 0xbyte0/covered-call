@@ -66,9 +66,8 @@ contract TestContract is Test, ERC721Holder {
         myCoveredCall.exerciseOption(vaultId);
     }
 
-    function testPurchaseOption() public {
+    function testHarvest() public {
         uint256 vaultId = createNewVault(4);
-
-        myCoveredCall.purchaseOption{value: 3 ether}(vaultId);
+        myCoveredCall.harvest();
     }
 }
