@@ -249,7 +249,9 @@ contract coveredCall is coveredCallNFT, Ownable, ERC721Holder{
         emit Harvested(msg.sender, amount);
 
         // transfer eth to msg.sender
-        payable(msg.sender).send(amount);
+        bool sent = payable(msg.sender).send(amount);
+
+        require(sent, "harvest failed");
     }
 
     /// @notice Gets a the vault value with `vaultId`
